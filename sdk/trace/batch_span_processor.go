@@ -5,10 +5,13 @@ package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/sdk/internal/env"
@@ -82,6 +85,8 @@ var _ SpanProcessor = (*batchSpanProcessor)(nil)
 //
 // If the exporter is nil, the span processor will perform no action.
 func NewBatchSpanProcessor(exporter SpanExporter, options ...BatchSpanProcessorOption) SpanProcessor {
+	fmt.Println("creating new batch span processor")
+
 	maxQueueSize := env.BatchSpanProcessorMaxQueueSize(DefaultMaxQueueSize)
 	maxExportBatchSize := env.BatchSpanProcessorMaxExportBatchSize(DefaultMaxExportBatchSize)
 
@@ -293,10 +298,26 @@ func (bsp *batchSpanProcessor) exportSpans(ctx context.Context) error {
 // is shut down. It calls the exporter in batches of up to MaxExportBatchSize
 // waiting up to BatchTimeout to form a batch.
 func (bsp *batchSpanProcessor) processQueue() {
+	fmt.Println("start processing")
+
 	defer bsp.timer.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	defer func() {
+		if r := recover(); r != nil {
+			// Логируем панику и стек
+			fmt.Printf("Panic recovered in batchSpanProcessor.processQueue: %v\n%s", r, string(debug.Stack()))
+
+			// Отправляем ошибку в Sentry
+			sentry.CurrentHub().Recover(r)
+			sentry.Flush(time.Second)
+
+			// Возвращаем клиенту статус 500
+		}
+	}()
+
 	for {
 		select {
 		case <-bsp.stopCh:

@@ -14,8 +14,11 @@ require (
 	golang.org/x/sys v0.26.0
 )
 
+require golang.org/x/text v0.14.0 // indirect
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/getsentry/sentry-go v0.29.1
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
